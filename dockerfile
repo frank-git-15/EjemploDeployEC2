@@ -10,8 +10,8 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-RUN manage.py makemigrations
+RUN py manage.py makemigrations
 
-RUN manage.py migrate
+RUN py manage.py migrate
 
 CMD ["python","manage.py","runserver","0.0.0.0:8000"]
