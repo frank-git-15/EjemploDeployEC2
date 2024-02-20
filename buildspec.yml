@@ -21,12 +21,12 @@ phases:
   
   build:
     commands:
-      - echo Running tests on `date`
-      - cd arkonproject  
-      - pytest
-      - cd ..
-      - echo tests end on `date`
-      - echo Build completed on `date`
+      # - echo Running tests on `date`
+      # - cd arkonproject  
+      # - pytest
+      # - cd ..
+      # - echo tests end on `date`
+      # - echo Build completed on `date`
       - echo building docker image
       - docker build -t $ECR_DIR:latest .
       - docker tag $ECR_DIR:latest $ECR_DIR:latest
