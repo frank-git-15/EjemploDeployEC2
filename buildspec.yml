@@ -34,7 +34,7 @@ phases:
       # - docker build --no-cache -t ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG} -f Docker/Dockerfile .
       # - docker push ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG}          
       # - ecs deploy ${ECS_CLUSTER} ${APP} --image ${APP} ${ECR_URL}/${APP}:latest --timeout -1 --env ${APP} BUILD_NUMBER ${CODEBUILD_BUILD_NUMBER}
-      - ecs deploy $nombre_cluster PuntosDEAccesoService --image PuntosDEAccesoService $ECR_DIR:latest --timeout -1 --env PuntosDEAccesoService BUILD_NUMBER ${CODEBUILD_BUILD_NUMBER}
+      - ecs deploy $ECS_CLUSTER PuntosDEAccesoService --image PuntosDEAccesoService $ECR_DIR:latest --timeout -1 --env PuntosDEAccesoService BUILD_NUMBER ${CODEBUILD_BUILD_NUMBER}
     
   post_build:
     commands:
