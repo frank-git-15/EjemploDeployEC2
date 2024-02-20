@@ -23,7 +23,7 @@ phases:
     commands:
       - echo Running tests on `date`
       - cd arkonproject  
-      - pytest.
+      - pytest
       - cd ..
       - echo tests end on `date`
       - echo Build completed on `date`
