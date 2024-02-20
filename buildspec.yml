@@ -1,0 +1,34 @@
+version: 0.2
+
+phases:
+  install:
+      commands:
+        - python -m venv venv
+        - source venv/bin/activate
+        - pip install -r requirements.txt 
+
+  pre_build:
+    commands:
+      - echo Login in Amazon ECR....
+      - echo $DOCKERHUB_PASS | docker login --username $DOCKERHUB_USER --password-stdin
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_DIR
+      
+  
+  build:
+    commands:
+      - echo Running tests on `date`
+      - cd arkonproject  
+      - pytest
+      - cd ..
+      - echo tests end on `date`
+      - echo Build completed on `date`
+      - echo building docker image
+      - docker build -t $ECR_DIR:latest .
+      - docker tag $ECR_DIR:latest $ECR_DIR:latest
+    
+  post_build:
+    commands:
+      - echo building completed on `date`
+      - echo pushing the docker image
+      - docker push $ECR_DIR:latest
+

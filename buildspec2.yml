@@ -1,0 +1,61 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    PRODUCTION_ACCOUNT_ID: 331177396331
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+      nodejs: 18
+    commands:
+      - pip install ecs-deploy
+  pre_build:
+    commands:
+      - APP=$(echo $CODEBUILD_BUILD_ID | cut -f1 -d ':')
+      - APP_VERSION=$(echo ${CODEBUILD_WEBHOOK_HEAD_REF} | awk -F / '{print $3}')
+      - GIT_HASH=$(git rev-parse --short HEAD)
+      - GIT_COMMIT_ID=$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - GIT_COMMIT_MSG=$(echo $(git log -1 --pretty='%B') | awk '{$1=$1};1')
+      - GIT_COMMIT_AUTHOR=$(echo $(git log -1 --format='%ae') | awk '{$1=$1};1')
+      - IMAGE_DATE=$(date +%y%m%d%H%M)
+      - DOCKER_BUILD_TAG="${ENVR}-${CODEBUILD_BUILD_NUMBER}-${IMAGE_DATE}"
+      - ECS_CLUSTER=$NAMESPACE
+      - ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -f5 -d ':')
+      - ECR_URL=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - echo ">> Logging in to Amazon ECR"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ECR_URL}
+      - PRODUCTION_VERSION_NUMBER=$(npm pkg get version --workspaces=false | tr -d \")
+  build:
+    commands:
+      # Generate .env file
+      - cd $CODEBUILD_SRC_DIR_CONFIG
+      - if [ ${ACCOUNT_ID} == "${PRODUCTION_ACCOUNT_ID}" ]; then node envBuilder.js --env $ENVR --whitelabel $WHITELABEL --prod; fi
+      - if [ ${ACCOUNT_ID} != "${PRODUCTION_ACCOUNT_ID}" ]; then node envBuilder.js --env $ENVR --whitelabel $WHITELABEL; fi
+      - cat $CODEBUILD_SRC_DIR_CONFIG/.env
+      - cp $CODEBUILD_SRC_DIR_CONFIG/.env $CODEBUILD_SRC_DIR/.env
+      - cd $CODEBUILD_SRC_DIR
+      - BACKEND_ENDPOINT=$(cat .env | grep NEXT_PUBLIC_API_URL | grep -v "#" | awk -F "//" '{print $2}')
+      - echo Prepare .env file AND If Production set version is hardcoded
+      - echo "" >> .env
+      - if [ ${ACCOUNT_ID} == "${PRODUCTION_ACCOUNT_ID}" ]; then echo "NEXT_PUBLIC_VERSION_NUMBER=${PRODUCTION_VERSION_NUMBER}" >> .env; fi
+      - if [ ${ACCOUNT_ID} != "${PRODUCTION_ACCOUNT_ID}" ]; then echo "NEXT_PUBLIC_VERSION_NUMBER=${APP_VERSION}-${GIT_HASH}-${BACKEND_ENDPOINT}" >> .env; fi
+      - cat .env
+      # Docker Build/Push/Deploy
+      - docker build --no-cache -t ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG} -f Docker/Dockerfile .
+      - docker push ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG}
+      - echo ">> Deploy of ${APP} ECS service"            
+      - ecs deploy ${ECS_CLUSTER} ${APP} --image ${APP} ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG} --timeout -1 --env ${APP} BUILD_NUMBER ${CODEBUILD_BUILD_NUMBER}
+  post_build:
+    commands:
+      - echo App Name - $APP
+      - echo App Version - $APP_VERSION
+      - echo ENV - ${ENVR}
+      - echo ECS Cluster - ${ECS_CLUSTER}
+      - echo ECS Service - ${APP}
+      - echo Docker image tag - ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG}
+      - echo Git COMMIT_ID - $GIT_COMMIT_ID
+      - echo Git COMMIT_AUTHOR - $GIT_COMMIT_AUTHOR
+      - echo Git COMMIT_MSG - $GIT_COMMIT_MSG
