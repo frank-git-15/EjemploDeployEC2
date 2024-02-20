@@ -2,13 +2,18 @@ version: 0.2
 
 phases:
   install:
+    runtime-versions:
+        python: 3.11
       commands:
         - python -m venv venv
         - source venv/bin/activate
+        - pip install ecs-deploy
         - pip install -r requirements.txt 
 
   pre_build:
     commands:
+      - ECS_CLUSTER=$NAMESPACE
+      - APP=$(echo $CODEBUILD_BUILD_ID | cut -f1 -d ':')
       - echo Login in Amazon ECR....
       - echo $DOCKERHUB_PASS | docker login --username $DOCKERHUB_USER --password-stdin
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_DIR
@@ -25,6 +30,11 @@ phases:
       - echo building docker image
       - docker build -t $ECR_DIR:latest .
       - docker tag $ECR_DIR:latest $ECR_DIR:latest
+      - echo ">> Deploy ECS service"  
+      # - docker build --no-cache -t ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG} -f Docker/Dockerfile .
+      # - docker push ${ECR_URL}/${APP}:${DOCKER_BUILD_TAG}          
+      # - ecs deploy ${ECS_CLUSTER} ${APP} --image ${APP} ${ECR_URL}/${APP}:latest --timeout -1 --env ${APP} BUILD_NUMBER ${CODEBUILD_BUILD_NUMBER}
+      - ecs deploy $nombre_cluster PuntosDEAccesoService --image PuntosDEAccesoService $ECR_DIR:latest --timeout -1 --env PuntosDEAccesoService
     
   post_build:
     commands:
