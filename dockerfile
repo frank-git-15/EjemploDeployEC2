@@ -10,8 +10,8 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-RUN python arkonproject/manage.py makemigrations
+RUN manage.py makemigrations
 
-RUN python arkonproject/manage.py migrate
+RUN manage.py migrate
 
-CMD ["python","arkonproject/manage.py","runserver","0.0.0.0:8000"]
+CMD ["python","manage.py","runserver","0.0.0.0:8000"]
